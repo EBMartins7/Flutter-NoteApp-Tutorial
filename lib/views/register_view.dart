@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
-import 'package:mynotes/views/login_view.dart';
+import 'package:mynotes/constants/routes.dart';
+import 'package:mynotes/util/show_erro_dialog.dart';
 
 class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
@@ -12,7 +12,6 @@ class RegisterView extends StatefulWidget {
 }
 
 class _RegisterViewState extends State<RegisterView> {
-
   late final TextEditingController _email;
   late final TextEditingController _password;
 
@@ -32,7 +31,7 @@ class _RegisterViewState extends State<RegisterView> {
 
   @override
   Widget build(BuildContext context) {
-    return  Scaffold(
+    return Scaffold(
       appBar: AppBar(
         title: const Text('Register'),
       ),
@@ -43,51 +42,62 @@ class _RegisterViewState extends State<RegisterView> {
             enableSuggestions: false,
             autocorrect: false,
             keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
-                hintText: 'Enter email'
-            ),
+            decoration: const InputDecoration(hintText: 'Enter email'),
           ),
           TextField(
             controller: _password,
             obscureText: true,
             enableSuggestions: false,
             autocorrect: false,
-            decoration: const InputDecoration(
-                hintText: 'Enter password'
-            ),
+            decoration: const InputDecoration(hintText: 'Enter password'),
           ),
           TextButton(
               onPressed: () async {
                 final email = _email.text;
                 final password = _password.text;
-                try{
-                  final credentials = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-                      email: email,
-                      password: password
-                  );
-                  print(credentials);
-                } on FirebaseAuthException catch(e) {
+                try {
+                  await FirebaseAuth.instance
+                      .createUserWithEmailAndPassword(
+                          email: email, password: password);
+                  Navigator.of(context).pushNamed(verifyEmailRoute);
+                  final user = FirebaseAuth.instance.currentUser;
+                  await user?.sendEmailVerification();
+                } on FirebaseAuthException catch (e) {
                   if (e.code == 'weak-password') {
-                    print('Weak password');
+                    await showErrorDialog(
+                      context,
+                      'Weak password!',
+                    );
                   } else if (e.code == 'email-already-in-use') {
-                    print('Email is already in use');
-                  } else if(e.code == 'invalid-email'){
-                    print('Invalid email entered');
+                    await showErrorDialog(
+                      context,
+                      'Email is already in use!',
+                    );
+                  } else if (e.code == 'invalid-email') {
+                    await showErrorDialog(
+                      context,
+                      'Invalid email!',
+                    );
+                  } else {
+                    await showErrorDialog(
+                      context,
+                      'Error: ${e.code}',
+                    );
                   }
+                } catch (e) {
+                  await showErrorDialog(
+                    context,
+                    e.toString(),
+                  );
                 }
-
               },
-              child: const Text('Register')
-          ),
+              child: const Text('Register')),
           TextButton(
               onPressed: () {
-                Navigator.of(context).pushNamedAndRemoveUntil(
-                    '/login/',
-                    (route) => false
-                );
+                Navigator.of(context)
+                    .pushNamedAndRemoveUntil(loginRoute, (route) => false);
               },
-              child: const Text('Login!')
-          )
+              child: const Text('Login!'))
         ],
       ),
     );

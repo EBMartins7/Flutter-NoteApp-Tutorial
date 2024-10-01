@@ -1,8 +1,12 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:developer' as devtools show log;
 
+import 'package:mynotes/constants/routes.dart';
+import 'package:mynotes/util/show_erro_dialog.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -31,7 +35,7 @@ class _LoginViewState extends State<LoginView> {
 
   @override
   Widget build(BuildContext context) {
-    return  Scaffold(
+    return Scaffold(
       appBar: AppBar(
         title: const Text('Login'),
       ),
@@ -42,51 +46,70 @@ class _LoginViewState extends State<LoginView> {
             enableSuggestions: false,
             autocorrect: false,
             keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
-                hintText: 'Enter email'
-            ),
+            decoration: const InputDecoration(hintText: 'Enter email'),
           ),
           TextField(
             controller: _password,
             obscureText: true,
             enableSuggestions: false,
             autocorrect: false,
-            decoration: const InputDecoration(
-                hintText: 'Enter password'
-            ),
+            decoration: const InputDecoration(hintText: 'Enter password'),
           ),
           TextButton(
               onPressed: () async {
                 final email = _email.text;
                 final password = _password.text;
-                try{
-                  final credentials = await
-                  FirebaseAuth.instance.signInWithEmailAndPassword(
-                      email: email,
-                      password: password
+                try {
+                  await FirebaseAuth.instance.signInWithEmailAndPassword(
+                    email: email,
+                    password: password,
                   );
-                  print(credentials);
-                } on FirebaseAuthException catch(e) {
-                  if (e.code == 'user-not-found') {
-                    print('User not found');
-                  } else if(e.code == 'wrong-password') {
-                    print('Password is wrong');
+                  final user = FirebaseAuth.instance.currentUser;
+                  if (user?.emailVerified ?? false) {
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                      notesRoute,
+                          (route) => false,
+                    );
+                  } else {
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                      verifyEmailRoute,
+                          (route) => false,
+                    );
                   }
+                } on FirebaseAuthException catch (e) {
+                  if (e.code == 'user-not-found') {
+                    await showErrorDialog(
+                      context,
+                      'User not found!',
+                    );
+                  } else if (e.code == 'wrong-password') {
+                    await showErrorDialog(
+                      context,
+                      'Wrong details',
+                    );
+                  } else {
+                    await showErrorDialog(
+                      context,
+                      'Error: ${e.code}',
+                    );
+                  }
+                } catch (e) {
+                  await showErrorDialog(
+                    context,
+                    e.toString(),
+                  );
                 }
               },
-              child: const Text('Login')
-          ),
+              child: const Text('Login')),
           TextButton(
               onPressed: () {
-                Navigator.of(context).pushNamedAndRemoveUntil(
-                    '/register/',
-                        (route) => false
-                );
+                Navigator.of(context)
+                    .pushNamedAndRemoveUntil(registerRoute, (route) => false);
               },
-              child: const Text('Register here!')
-          )
+              child: const Text('Register here!'))
         ],
       ),
     );
   }
 }
+
